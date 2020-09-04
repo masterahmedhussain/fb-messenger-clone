@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { Button, Input, FormControl, InputLabel } from "@material-ui/core";
-
 import "./App.css";
-
 import Message from "./components/Message";
+import db from "./firebase";
+import firebase from "firebase";
+import FlipMove from "react-flip-move";
 
 function App() {
   const [input, setInput] = useState("");
-  const [messages, sendMessages] = useState([
-    { username: "ahmed", text: "hii" },
-    { username: "hussian", text: "heeyyy" },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [username, setUsername] = useState("");
+
+  //getting the data from the database.....
+  useEffect(() => {
+    db.collection("messages")
+      .orderBy("timestamp", "desc")
+      .onSnapshot((snapshot) => {
+        setMessages(
+          snapshot.docs.map((doc) => ({ id: doc.id, message: doc.data() }))
+        );
+      });
+  }, []);
 
   useEffect(() => {
     setUsername(prompt("please enter your name "));
@@ -20,7 +29,13 @@ function App() {
   const sendMessage = (event) => {
     event.preventDefault();
     //all the logic to send messages
-    sendMessages([...messages, { username: username, text: input }]);
+
+    db.collection("messages").add({
+      message: input,
+      username: username,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
     setInput("");
   };
 
@@ -29,26 +44,30 @@ function App() {
       <h1>Welcome to the fb messenger clone</h1>
       <h3>Welcome {username}</h3>
 
-      {messages.map((message) => (
-        <Message username={username} message={message} />
-      ))}
+      <form className="app__form">
+        <FormControl>
+          <Input
+            placeholder="Enter the message"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+          />
+          <Button
+            disabled={!input}
+            variant="contained"
+            color="primary"
+            type="submit"
+            onClick={sendMessage}
+          >
+            Send Message
+          </Button>
+        </FormControl>
+      </form>
 
-      <FormControl>
-        <InputLabel>Enter the message</InputLabel>
-        <Input
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-        />
-        <Button
-          disabled={!input}
-          variant="contained"
-          color="primary"
-          type="submit"
-          onClick={sendMessage}
-        >
-          Send Message
-        </Button>
-      </FormControl>
+      <FlipMove>
+        {messages.map(({ message, id }) => (
+          <Message key={id} username={username} message={message} />
+        ))}
+      </FlipMove>
     </div>
   );
 }
